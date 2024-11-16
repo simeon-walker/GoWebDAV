@@ -1,13 +1,12 @@
-FROM golang:1.19 as build
-WORKDIR /go/release
-COPY go.mod .
-COPY go.sum .
-COPY mod.sh .
-RUN ./mod.sh
+FROM golang:1.23 as build
+WORKDIR /workspace
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-RUN GOOS=linux CGO_ENABLED=0 go build -o app
-FROM alpine as prod
-EXPOSE 80
-WORKDIR /root
-COPY --from=build /go/release/app app
-ENTRYPOINT ./app --dav=$dav
+RUN go test ./...
+RUN CGO_ENABLED=0 go build -o app
+
+FROM gcr.io/distroless/static-debian12 as prod
+WORKDIR /workspace
+COPY --from=build /workspace/app app
+ENTRYPOINT [ "./app"]
